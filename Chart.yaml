@@ -1,0 +1,7 @@
+name: Testrail
+description: Testrail helm chart
+version: 1.0
+appVersion: 6.7.2.1043
+keywords:
+  - testrail
+author: Sergei Afanasenko

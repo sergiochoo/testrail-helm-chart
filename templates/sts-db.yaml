@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    service: db
+  name: db
+spec:
+  replicas: {{ .Values.srv.replicaCount }}
+  serviceName: "db"
+  selector:
+    matchLabels:
+      service: db
+  template:
+    metadata:
+      labels:
+        network/testrail: "true"
+        service: db
+    spec:
+      initContainers:
+      - name: remove-lost-and-found
+        image: busybox:1.28
+        command: ['sh', '-c', 'rm -rf /var/lib/mysql/lost+found; exit 0;']
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - mountPath: /var/lib/mysql
+            name: testrail-mysql
+      containers:
+      - image: "{{ .Values.db.image.repository }}/{{ .Values.db.image.tag }}"
+        imagePullPolicy: {{ .Values.db.image.pullPolicy }}
+        name: db
+        env:
+        - name: MYSQL_ALLOW_EMPTY_PASSWORD
+          value: "false"
+        - name: MYSQL_DATABASE
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_DATABASE
+              name: testrail
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_PASSWORD
+              name: testrail
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_ROOT_PASSWORD
+              name: testrail
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_USER
+              name: testrail
+        resources:
+{{ toYaml .Values.db.resources | indent 12 }}
+    {{- if .Values.db.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.db.nodeSelector | indent 8 }}
+    {{- end }}
+    {{- if .Values.db.tolerations }}
+      tolerations:
+{{ toYaml .Values.db.tolerations | indent 8 }}
+    {{- end }}
+    {{- if .Values.db.affinity }}
+      affinity:
+{{ toYaml .Values.db.affinity | indent 8 }}
+    {{- end }}
+        volumeMounts:
+          - mountPath: /var/lib/mysql
+            name: testrail-mysql
+      restartPolicy: Always
+      volumes:
+        - name: testrail
+          secret:
+            secretName: testrail
+        - name: testrail-mysql
+          persistentVolumeClaim:
+            claimName: testrail-mysql

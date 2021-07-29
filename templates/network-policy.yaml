@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: testrail-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      service: db
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          service: srv
+    ports:
+    - protocol: TCP
+      port: 3306

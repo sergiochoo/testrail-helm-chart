@@ -1,0 +1,89 @@
+# Default values for Testrail.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Testrail server properties
+srv:
+  replicaCount: 1
+
+  image:
+    repository: testrail
+    tag: apache:6.7.2.1043
+    pullPolicy: IfNotPresent
+
+# If you don't want to specify resources, comment the following lines.
+# It will increase chances chart run on environments with little
+# resources, such as Minikube. But in production environments I recommend to use parameters set below.
+  resources:
+    requests:
+      cpu: 200m
+      memory: 600Mi
+    limits:
+      cpu: "1"
+      memory: 1536Mi
+
+  servicePort: 8000
+
+  nodeSelector: {}
+# Affinity for pod assignment
+# Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  affinity: {}
+
+# Tolerations for pod assignment
+# Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+  tolerations: []
+
+# Node labels for pod assignment
+# Ref: https://kubernetes.io/docs/user-guide/node-selection/
+
+db:
+  replicaCount: 1
+
+  image:
+    repository: testrail
+    tag: mysql:6.3.1
+    pullPolicy: IfNotPresent
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 600Mi
+    limits:
+      cpu: "700m"
+      memory: 1536Mi    
+
+  nodeSelector: {}
+# Affinity for pod assignment
+# Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+  affinity: {}
+
+# Tolerations for pod assignment
+# Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+  tolerations: []
+
+# Node labels for pod assignment
+# Ref: https://kubernetes.io/docs/user-guide/node-selection/
+
+# MySQL DB settings and credentials
+  dbname: "testrail"
+  mysql_user: "testrail"
+  mysql_password: "password"
+  root_password: "password"
+
+ingress:
+  enabled: true
+  # Used to create an Ingress record.
+  hosts:
+    - name: testrail.organization.com
+
+  annotations: {}
+  # kubernetes.io/ingress.class: nginx
+  # kubernetes.io/tls-acme: "true"
+  # This property allows for reports up to a certain size to be uploaded to SonarQube
+  # nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+
+  tls:
+  # Secrets must be manually created in the namespace.
+    - secretName: testrail-tls
+      hosts:
+        - testrail.organization.com
