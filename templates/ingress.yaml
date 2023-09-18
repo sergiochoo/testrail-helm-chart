@@ -1,22 +1,29 @@
 {{- if .Values.ingress.enabled -}}
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   generation: 2
-  name: testrail
+  name: {{ include "testrail.fullname" . }}
+  labels:
+    {{- include "testrail.labels" . | nindent 4 }}
   annotations:
     {{- range $key, $value := .Values.ingress.annotations }}
     {{ $key }}: {{ $value | quote }}
     {{- end }}  
 spec:
   rules:
+    {{- $serviceName := include "testrail.fullname" . }}
+    {{- $servicePort := .Values.srv.servicePort }}
     {{- range .Values.ingress.hosts }}
     - host: {{ .name }}
       http:
         paths:
         - backend:  {{ .path}}
-            serviceName: svc-srv
-            servicePort: 8000
+            service:
+              name: {{ $serviceName }}
+              port:
+                number: {{ $servicePort }}
+          path: /
           pathType: ImplementationSpecific
     {{- end -}}
   {{- if .Values.ingress.tls }}

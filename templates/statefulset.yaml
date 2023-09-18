@@ -1,0 +1,156 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "testrail.fullname" . }}
+  labels:
+    {{- include "testrail.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.srv.replicaCount }}
+  serviceName: "db"
+  selector:
+    matchLabels:
+      {{- include "testrail.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "testrail.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Always
+      volumes:
+        - name: ca-certificates
+          configMap:
+            name: ca-certificates
+{{- if .Values.srv.ldap.enable }}
+        - name: ldap-auth
+          configMap:
+            name: {{ include "testrail.fullname" . }}-ldap-auth
+{{- else if .Values.srv.ad.enable }}
+        - name: ad-auth
+          configMap:
+            name: {{ include "testrail.fullname" . }}-ad-auth
+{{- end }}
+
+      initContainers:
+      - name: remove-lost-and-found
+        image: busybox:1.28
+        command: ['sh', '-c', 'rm -rf /var/lib/mysql/lost+found; exit 0;']
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - mountPath: /var/lib/mysql
+            name: testrail
+            subPath: mysql
+
+      containers:
+      - image: "{{ .Values.db.image.repository }}:{{ .Values.db.image.tag }}"
+        imagePullPolicy: {{ .Values.db.image.pullPolicy }}
+        name: db
+        env:
+        - name: MYSQL_ALLOW_EMPTY_PASSWORD
+          value: "false"
+        - name: MYSQL_DATABASE
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_DATABASE
+              name: testrail
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_PASSWORD
+              name: testrail
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_ROOT_PASSWORD
+              name: testrail
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_USER
+              name: testrail
+        resources:
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: testrail
+          subPath: mysql
+        - name: ca-certificates
+          subPath: ca-certificates.crt
+          mountPath: /etc/ssl/certs/ca-certificates.crt
+
+      - image: "{{ .Values.srv.image.repository }}:{{ .Values.srv.image.tag }}"
+        imagePullPolicy: {{ .Values.srv.image.pullPolicy }}
+        name: srv
+        ports:
+          - containerPort: 80
+        resources:
+{{ toYaml .Values.srv.resources | indent 12 }}
+  {{- if .Values.srv.nodeSelector }}
+    nodeSelector:
+{{ toYaml .Values.srv.nodeSelector | indent 8 }}
+  {{- end }}
+  {{- if .Values.srv.tolerations }}
+    tolerations:
+{{ toYaml .Values.srv.tolerations | indent 8 }}
+  {{- end }}
+  {{- if .Values.srv.affinity }}
+    affinity:
+{{ toYaml .Values.srv.affinity | indent 8 }}
+  {{- end }}
+        volumeMounts:
+        - mountPath: /var/www/testrail/config/
+          name: testrail
+          subPath: config
+        - mountPath: /opt/testrail
+          name: {{ include "testrail.fullname" . }}
+          subPath: opt
+        - name: ca-certificates
+          subPath: ca-certificates.crt
+          mountPath: /etc/ssl/certs/ca-certificates.crt
+{{- if .Values.srv.ldap.enable }}
+        - name: ldap-auth
+          subPath: script
+          mountPath: /var/www/testrail/custom/auth/auth.php
+{{- else if .Values.srv.ad.enable }}
+        - name: ad-auth
+          subPath: script
+          mountPath: /var/www/testrail/custom/auth/auth.php
+{{- end }}
+      - image: "{{ .Values.cassandra.image.repository }}:{{ .Values.cassandra.image.tag }}"
+        imagePullPolicy: IfNotPresent
+        name: cassandra
+        ports:
+          - containerPort: 9042
+        resources:
+{{ toYaml .Values.cassandra.resources | indent 12 }}
+  {{- if .Values.cassandra.nodeSelector }}
+    nodeSelector:
+{{ toYaml .Values.cassandra.nodeSelector | indent 8 }}
+  {{- end }}
+  {{- if .Values.cassandra.tolerations }}
+    tolerations:
+{{ toYaml .Values.cassandra.tolerations | indent 8 }}
+  {{- end }}
+  {{- if .Values.cassandra.affinity }}
+    affinity:
+{{ toYaml .Values.cassandra.affinity | indent 8 }}
+  {{- end }}
+        volumeMounts:
+          - mountPath: '/var/lib/cassandra'
+            name: testrail
+            subPath: cassandra
+
+  volumeClaimTemplates:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      labels:
+        {{- include "testrail.labels" . | nindent 8 }}
+      name: testrail
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+      volumeMode: Filesystem
+
