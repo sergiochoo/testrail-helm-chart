@@ -7,8 +7,8 @@ srv:
   replicaCount: 1
 
   image:
-    repository: testrail
-    tag: apache:6.7.2.1043
+    repository: testrail/apache
+    tag: 7.5.3.1000
     pullPolicy: IfNotPresent
 
 # If you don't want to specify resources, comment the following lines.
@@ -35,13 +35,35 @@ srv:
 
 # Node labels for pod assignment
 # Ref: https://kubernetes.io/docs/user-guide/node-selection/
+  ldap:
+    enable: false
+    auth_host: ldap://example.com
+    auth_port: 389
+    auth_bind_dn: user@example.com
+    auth_bind_password: password
+    auth_dn: OU=Users,DC=example,DC=com
+    auth_filter: (&(objectclass=user)(sAMAccountName=%name%))
+    auth_fallback: true
+    auth_create_account: false
+    auth_name_attribute: displayname
+    auth_mail_attribute: mail
+
+  ad:
+    enable: false
+    auth_host: ldap://example.com
+    auth_port: 389
+    auth_dn: OU=Users,DC=example,DC=com
+    auth_fallback: true
+    auth_create_account: true
+    auth_domain: EXAMPLE
+    auth_membership: /^CN=My Group,/
 
 db:
   replicaCount: 1
 
   image:
-    repository: testrail
-    tag: mysql:6.3.1
+    repository: testrail/mysql
+    tag: 6.3.1.1006
     pullPolicy: IfNotPresent
 
   resources:
@@ -70,13 +92,28 @@ db:
   mysql_password: "password"
   root_password: "password"
 
+cassandra:
+  image:
+    repository: testrail/cassandra
+    tag: latest
+# If you don't want to specify resources, comment the following lines.
+# It will increase chances chart run on environments with little
+# resources, such as Minikube. But in production environments I recommend to use parameters set below.
+  resources:
+    requests:
+      cpu: 200m
+      memory: 600Mi
+    limits:
+      cpu: "1"
+      memory: 1536Mi
+
 ingress:
-  enabled: true
+  enabled: false
   # Used to create an Ingress record.
   hosts:
-    - name: testrail.organization.com
+  - name: testrail.organization.com
 
-  annotations: {}
+  annotations:
   # kubernetes.io/ingress.class: nginx
   # kubernetes.io/tls-acme: "true"
   # This property allows for reports up to a certain size to be uploaded to SonarQube
@@ -84,6 +121,6 @@ ingress:
 
   tls:
   # Secrets must be manually created in the namespace.
-    - secretName: testrail-tls
-      hosts:
-        - testrail.organization.com
+  - secretName: testrail-tls
+    hosts:
+      - testrail.organization.com

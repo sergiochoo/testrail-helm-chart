@@ -2,17 +2,19 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: testrail-network-policy
+  labels:
+    {{- include "testrail.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      service: db
+      {{- include "testrail.selectorLabels" . | nindent 6 }}
+
   policyTypes:
   - Ingress
   ingress:
   - from:
-    - podSelector:
-        matchLabels:
-          service: srv
+      - ipBlock:
+         cidr: "0.0.0.0/0"
     ports:
     - protocol: TCP
-      port: 3306
+      port: 80
